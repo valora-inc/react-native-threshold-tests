@@ -71,19 +71,26 @@ public class MyFancyLibraryModule extends ReactContextBaseJavaModule {
             blind(msg, seedBuf, blindedMessage, token);
             Log.d(TAG, "stuff 0");
 
-            PointerByReference pDev = new PointerByReference();
-            deserialize_privkey(seed, pDev);
-            Log.d(TAG, "ptr: " + pDev.getValue());
+            PointerByReference pKeys = new PointerByReference();
+            keygen(seedBuf, pKeys);
+            Log.d(TAG, "ptr -1: " + pKeys.getValue());
+
+            Pointer pDev = private_key_ptr(pKeys.getValue());
+
+            Log.d(TAG, "ptr: " + pDev);
             PointerByReference buffer = new PointerByReference();
-            serialize_privkey(pDev.getValue(), buffer);
+            serialize_privkey(pDev, buffer);
             Log.d(TAG, "stuff 1: " + buffer.getValue());
             Log.d(TAG, "stuff 2: " + bytesToHex(buffer.getValue().getByteArray(0, 32)));
 
             Buffer sig = new Buffer();
-            sign(pDev.getValue(), blindedMessage, sig);
+            sign(pDev, blindedMessage, sig);
             sig.read();
             Log.d(TAG, "stuff 3: " + sig.len);
-            Log.d(TAG, "stuff 3: " + bytesToHex(sig.message.getByteArray(0, 193)));
+            Log.d(TAG, "stuff 3: " + bytesToHex(sig.message.getByteArray(0, sig.len)));
+
+            destroy_keypair(pKeys.getValue());
+            Log.d(TAG, "stuff 4");
 
         } catch (Exception e) {
             Log.e(TAG, "Exception while blinding the message: " + e.getMessage() );
@@ -92,6 +99,9 @@ public class MyFancyLibraryModule extends ReactContextBaseJavaModule {
     }
 
     // Seed must be >= 32 characters long
+    private static native void keygen(Buffer seed, PointerByReference ptr);
+    private static native void destroy_keypair(Pointer ptr);
+    private static native Pointer private_key_ptr(Pointer ptr);
     private static native void deserialize_privkey(byte[] privkey, PointerByReference ptr);
     private static native void serialize_privkey(Pointer ptr, PointerByReference pubkey_buf);
     private static native void sign(Pointer private_key, Buffer message, Buffer signature);
